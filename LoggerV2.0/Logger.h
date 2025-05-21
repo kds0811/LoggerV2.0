@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <memory_resource>
+#include <mutex>
 #include <string>
 
 namespace Log
@@ -15,6 +16,7 @@ namespace Log
     std::pmr::monotonic_buffer_resource BufferResource;
     std::pmr::vector<std::pmr::string> StringsVec;
 
+    std::mutex Mutex;
 
   public:
     static Logger& Get()
@@ -22,6 +24,20 @@ namespace Log
       static Logger instance;
       return instance;
     }
+
+    template <typename... Types>
+    void Log(Types&&... args)
+    {
+      std::lock_guard lg{Mutex};
+      Logging(std::forward<Types>(args)...);
+    }
+
+
+  private:
+    Logger(const Logger&)             = delete;
+    Logger(const Logger&&)            = delete;
+    Logger& operator=(const Logger&)  = delete;
+    Logger& operator=(const Logger&&) = delete;
 
     template <typename T>
     void Logging(T&& arg)
@@ -38,12 +54,6 @@ namespace Log
       Logging(std::forward<Types>(args)...);
     }
 
-
-  private:
-    Logger(const Logger&) = delete;
-    Logger(const Logger&&) = delete;
-    Logger& operator=(const Logger&) = delete;
-    Logger& operator=(const Logger&&) = delete;
 
     inline void PrintLog()
     {
@@ -110,9 +120,9 @@ namespace Log
       StringsVec.emplace_back(" is nullptr ");
     }
 
-    inline void Logs(std::string&& arg) { StringsVec.emplace_back(arg); }
+    inline void Logs(std::string&& arg) { StringsVec.emplace_back(arg.c_str()); }
 
-    inline void Logs(std::string& arg) { StringsVec.emplace_back(arg); }
+    inline void Logs(std::string& arg) { StringsVec.emplace_back(arg.c_str()); }
 
     inline void Logs() { StringsVec.emplace_back(" "); }
 
@@ -165,13 +175,12 @@ namespace Log
       Logs(": ");
       Logs(arg.second);
     }
-
   };
 
 } // Logger namespace
 
 
-#define LOG_WARNING(...) Log::Logger::Get().Logging("warning ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
-#define LOG_ERROR(...) Log::Logger::Get().Logging("error ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
+#define LOG_WARNING(...) Log::Logger::Get().Log("warning ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
+#define LOG_ERROR(...) Log::Logger::Get().Log("error ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
 #define LOG_MESSAGE(...)                                                                                               \
-  Log::Logger::Get().Logging("information ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
+  Log::Logger::Get().Log("information ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
