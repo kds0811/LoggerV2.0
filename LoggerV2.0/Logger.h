@@ -15,7 +15,6 @@ namespace Log
     std::array<std::byte, 10240> Raw{};
     std::pmr::monotonic_buffer_resource BufferResource;
     std::pmr::vector<std::pmr::string> StringsVec;
-
     std::mutex Mutex;
 
   public:
@@ -32,8 +31,8 @@ namespace Log
       Logging(std::forward<Types>(args)...);
     }
 
-
   private:
+    Logger() : BufferResource{Raw.data(), Raw.size(), std::pmr::get_default_resource()}, StringsVec{&BufferResource} {}
     Logger(const Logger&)             = delete;
     Logger(const Logger&&)            = delete;
     Logger& operator=(const Logger&)  = delete;
@@ -54,7 +53,6 @@ namespace Log
       Logging(std::forward<Types>(args)...);
     }
 
-
     inline void PrintLog()
     {
       for (const auto& s : StringsVec)
@@ -64,7 +62,6 @@ namespace Log
       OutputDebugString("\n");
     }
 
-    Logger() : BufferResource{Raw.data(), Raw.size(), std::pmr::get_default_resource()}, StringsVec{&BufferResource} {}
 
     inline void Logs(const char* arg)
     {
@@ -132,7 +129,6 @@ namespace Log
       arg ? StringsVec.emplace_back(" TRUE ") : StringsVec.emplace_back(" FALSE ");
     }
 
-
     template <>
     void Logs<const wchar_t*>(const wchar_t* arg)
     {
@@ -182,5 +178,4 @@ namespace Log
 
 #define LOG_WARNING(...) Log::Logger::Get().Log("warning ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
 #define LOG_ERROR(...) Log::Logger::Get().Log("error ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
-#define LOG_MESSAGE(...)                                                                                               \
-  Log::Logger::Get().Log("information ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
+#define LOG_MESSAGE(...) Log::Logger::Get().Log("information ", "FILE: ", __FILE__, " LINE: ", __LINE__, __VA_ARGS__)
